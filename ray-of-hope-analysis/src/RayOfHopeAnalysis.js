@@ -53,7 +53,7 @@ const RayOfHopeAnalysis = () => {
                 try {
                     console.log("Trying fetch API as fallback");
                     try {
-                        const response = await fetch('/ray_of_hope_campaigns_detailed.xlsx');
+                        const response = await fetch(`${process.env.PUBLIC_URL}/ray_of_hope_campaigns_detailed.xlsx`);
                         const arrayBuffer = await response.arrayBuffer();
                         const workbook = XLSX.read(new Uint8Array(arrayBuffer), { cellDates: true });
                         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
