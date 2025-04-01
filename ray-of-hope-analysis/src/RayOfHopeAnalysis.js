@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer} from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import * as XLSX from 'xlsx';
+import CategoryAnalysis from './CategoryAnalysis'; // Import the new component
+import MetricsTable from './MetricsTable';
 
 const RayOfHopeAnalysis = () => {
     const [data, setData] = useState({
         loading: true,
         overallMetrics: [],
         categoryMetrics: [],
-        primaryCategoryMetrics: [], // New state for primary category metrics
+        primaryCategoryMetrics: [],
         yearlyComparison: [],
-        primaryYearlyComparison: [], // New state for primary category comparison
+        primaryYearlyComparison: [],
         sourceCategories: [],
-        primaryCategories: [] // New state for primary category list
+        primaryCategories: []
     });
 
     const [selectedYears, setSelectedYears] = useState(['2023', '2024']);
     const [selectedMetric, setSelectedMetric] = useState('FundraisingEfficiency');
-    const [selectedPrimaryMetric, setSelectedPrimaryMetric] = useState('FundraisingEfficiency'); // New state for primary category metric selection
+    const [selectedPrimaryMetric, setSelectedPrimaryMetric] = useState('FundraisingEfficiency');
     const [showOnlyCompleted, setShowOnlyCompleted] = useState(true);
     const [removeOutliers, setRemoveOutliers] = useState(false);
     const [excludeGivingCircles, setExcludeGivingCircles] = useState(true);
@@ -49,6 +51,7 @@ const RayOfHopeAnalysis = () => {
                     { "Title": "Sample Campaign 4", "Days to Go": 0, "Amount Raised": 4200, "Target Amount": 5000, "Source Category": "0chronic-illness, seniors", "Start Date": "25/06/2024" },
                     { "Title": "Sample Campaign 5", "Days to Go": 0, "Amount Raised": 3500, "Target Amount": 4000, "Source Category": "families-in-need, 0children-12-years-and-below", "Start Date": "12/07/2024" }
                 ];
+
                 // Try to load real data if in Claude environment or via fetch
                 try {
                     console.log("Trying fetch API as fallback");
@@ -118,26 +121,23 @@ const RayOfHopeAnalysis = () => {
                 const yearlyMetrics = {};
                 Object.keys(campaignsByYear).forEach(year => {
                     const campaigns = campaignsByYear[year];
-                    const totalRaised = campaigns.reduce((sum, campaign) => sum + (campaign['Amount Raised'] || 0), 0);
+                    const totalRaised = Number(campaigns.reduce((sum, campaign) => sum + (campaign['Amount Raised'] || 0), 0).toFixed(0));
                     const totalTarget = campaigns.reduce((sum, campaign) => sum + (campaign['Target Amount'] || 0), 0);
-
-                    // MODIFIED: Calculate both completion rates
-                    // 1. Fundraising Efficiency: Total raised / Total target (previously called CompletionRate)
-                    const fundraisingEfficiency = totalTarget > 0 ? parseFloat(((totalRaised / totalTarget) * 100).toFixed(2)) : 0;
-
-                    // 2. Target Success Rate: % of campaigns that met or exceeded their target
+                    const fundraisingEfficiency = totalTarget > 0 ? parseFloat(((totalRaised / totalTarget) * 100).toFixed(0)) : 0;
+                    const totalDonors = campaigns.reduce((sum, campaign) => sum + (campaign['Number of Donors'] || 0), 0)
                     const campaignsMetTarget = campaigns.filter(campaign =>
                         (campaign['Amount Raised'] || 0) >= (campaign['Target Amount'] || 0)
                     ).length;
-                    const targetSuccessRate = campaigns.length > 0 ? parseFloat(((campaignsMetTarget / campaigns.length) * 100).toFixed(2)) : 0;
+                    const targetSuccessRate = campaigns.length > 0 ? parseFloat(((campaignsMetTarget / campaigns.length) * 100).toFixed(0)) : 0;
 
                     yearlyMetrics[year] = {
                         campaigns: campaigns.length,
                         amountRaised: totalRaised,
                         targetAmount: totalTarget,
                         fundraisingEfficiency: fundraisingEfficiency,
-                        campaignsMetTarget: campaignsMetTarget,  // NEW: Count of campaigns that met target
-                        targetSuccessRate: targetSuccessRate     // NEW: Percentage of campaigns that met target
+                        campaignsMetTarget: campaignsMetTarget,
+                        targetSuccessRate: targetSuccessRate,
+                        donors: totalDonors
                     };
                 });
 
@@ -172,9 +172,7 @@ const RayOfHopeAnalysis = () => {
 
                         const totalRaised = categoryCampaigns.reduce((sum, campaign) => sum + (campaign['Amount Raised'] || 0), 0);
                         const totalTarget = categoryCampaigns.reduce((sum, campaign) => sum + (campaign['Target Amount'] || 0), 0);
-
-                        // MODIFIED: Calculate both completion rates for categories
-                        // 1. Fundraising Efficiency (previously called completionRate)
+                        const totalDonors = categoryCampaigns.reduce((sum, campaign) => sum + (campaign['Number of Donors'] || 0), 0);
                         const fundraisingEfficiency = totalTarget > 0 ? (totalRaised / totalTarget) * 100 : 0;
 
                         // 2. Target Success Rate
@@ -189,12 +187,13 @@ const RayOfHopeAnalysis = () => {
                             targetAmount: totalTarget,
                             fundraisingEfficiency: fundraisingEfficiency,
                             campaignsMetTarget: campaignsMetTarget,
-                            targetSuccessRate: targetSuccessRate
+                            targetSuccessRate: targetSuccessRate,
+                            donors: totalDonors
                         };
                     });
                 });
 
-                // NEW: For each primary category, calculate metrics by year
+                // For each primary category, calculate metrics by year
                 const primaryCategoryMetricsByYear = {};
                 Array.from(allPrimaryCategories).forEach(category => {
                     primaryCategoryMetricsByYear[category] = {};
@@ -207,7 +206,7 @@ const RayOfHopeAnalysis = () => {
 
                         const totalRaised = categoryCampaigns.reduce((sum, campaign) => sum + (campaign['Amount Raised'] || 0), 0);
                         const totalTarget = categoryCampaigns.reduce((sum, campaign) => sum + (campaign['Target Amount'] || 0), 0);
-
+                        const totalDonors = categoryCampaigns.reduce((sum, campaign) => sum + (campaign['Number of Donors'] || 0), 0)
                         // Calculate metrics for primary categories
                         const fundraisingEfficiency = totalTarget > 0 ? (totalRaised / totalTarget) * 100 : 0;
 
@@ -222,7 +221,8 @@ const RayOfHopeAnalysis = () => {
                             targetAmount: totalTarget,
                             fundraisingEfficiency: fundraisingEfficiency,
                             campaignsMetTarget: campaignsMetTarget,
-                            targetSuccessRate: targetSuccessRate
+                            targetSuccessRate: targetSuccessRate,
+                            donors: totalDonors
                         };
                     });
                 });
@@ -235,7 +235,8 @@ const RayOfHopeAnalysis = () => {
                     TargetAmount: yearlyMetrics[year].targetAmount,
                     FundraisingEfficiency: yearlyMetrics[year].fundraisingEfficiency,
                     CampaignsMetTarget: yearlyMetrics[year].campaignsMetTarget,
-                    TargetSuccessRate: yearlyMetrics[year].targetSuccessRate
+                    TargetSuccessRate: yearlyMetrics[year].targetSuccessRate,
+                    Donors: yearlyMetrics[year].donors
                 }));
 
                 const categoryMetricsData = [];
@@ -249,12 +250,13 @@ const RayOfHopeAnalysis = () => {
                             TargetAmount: categoryMetricsByYear[category][year].targetAmount,
                             FundraisingEfficiency: categoryMetricsByYear[category][year].fundraisingEfficiency,
                             CampaignsMetTarget: categoryMetricsByYear[category][year].campaignsMetTarget,
-                            TargetSuccessRate: categoryMetricsByYear[category][year].targetSuccessRate
+                            TargetSuccessRate: categoryMetricsByYear[category][year].targetSuccessRate,
+                            Donors: categoryMetricsByYear[category][year].donors
                         });
                     });
                 });
 
-                // NEW: Format primary category metrics data
+                // Format primary category metrics data
                 const primaryCategoryMetricsData = [];
                 Object.keys(primaryCategoryMetricsByYear).forEach(category => {
                     Object.keys(primaryCategoryMetricsByYear[category]).forEach(year => {
@@ -266,7 +268,8 @@ const RayOfHopeAnalysis = () => {
                             TargetAmount: primaryCategoryMetricsByYear[category][year].targetAmount,
                             FundraisingEfficiency: primaryCategoryMetricsByYear[category][year].fundraisingEfficiency,
                             CampaignsMetTarget: primaryCategoryMetricsByYear[category][year].campaignsMetTarget,
-                            TargetSuccessRate: primaryCategoryMetricsByYear[category][year].targetSuccessRate
+                            TargetSuccessRate: primaryCategoryMetricsByYear[category][year].targetSuccessRate,
+                            Donors: primaryCategoryMetricsByYear[category][year].donors
                         });
                     });
                 });
@@ -282,6 +285,7 @@ const RayOfHopeAnalysis = () => {
                             result[`FundraisingEfficiency_${year}`] = categoryMetricsByYear[category][year].fundraisingEfficiency;
                             result[`CampaignsMetTarget_${year}`] = categoryMetricsByYear[category][year].campaignsMetTarget;
                             result[`TargetSuccessRate_${year}`] = categoryMetricsByYear[category][year].targetSuccessRate;
+                            result[`Donors_${year}`] = categoryMetricsByYear[category][year].donors;
                         } else {
                             result[`Campaigns_${year}`] = 0;
                             result[`AmountRaised_${year}`] = 0;
@@ -289,12 +293,13 @@ const RayOfHopeAnalysis = () => {
                             result[`FundraisingEfficiency_${year}`] = 0;
                             result[`CampaignsMetTarget_${year}`] = 0;
                             result[`TargetSuccessRate_${year}`] = 0;
+                            result[`Donors_${year}`] = 0;
                         }
                     });
                     return result;
                 });
 
-                // NEW: Primary category yearly comparison data
+                // Primary category yearly comparison data
                 const primaryYearlyComparisonData = Array.from(allPrimaryCategories).map(category => {
                     const result = { Category: category };
                     selectedYears.forEach(year => {
@@ -305,6 +310,7 @@ const RayOfHopeAnalysis = () => {
                             result[`FundraisingEfficiency_${year}`] = primaryCategoryMetricsByYear[category][year].fundraisingEfficiency;
                             result[`CampaignsMetTarget_${year}`] = primaryCategoryMetricsByYear[category][year].campaignsMetTarget;
                             result[`TargetSuccessRate_${year}`] = primaryCategoryMetricsByYear[category][year].targetSuccessRate;
+                            result[`Donors_${year}`] = primaryCategoryMetricsByYear[category][year].donors;
                         } else {
                             result[`Campaigns_${year}`] = 0;
                             result[`AmountRaised_${year}`] = 0;
@@ -312,6 +318,7 @@ const RayOfHopeAnalysis = () => {
                             result[`FundraisingEfficiency_${year}`] = 0;
                             result[`CampaignsMetTarget_${year}`] = 0;
                             result[`TargetSuccessRate_${year}`] = 0;
+                            result[`Donors_${year}`] = 0;
                         }
                     });
                     return result;
@@ -319,6 +326,7 @@ const RayOfHopeAnalysis = () => {
 
                 setData({
                     loading: false,
+                    yearlyMetrics: yearlyMetrics,
                     overallMetrics: overallMetricsData,
                     categoryMetrics: categoryMetricsData,
                     primaryCategoryMetrics: primaryCategoryMetricsData,
@@ -359,7 +367,7 @@ const RayOfHopeAnalysis = () => {
         });
     }
 
-    // NEW: Filter and sort primary category data
+    // Filter and sort primary category data
     let filteredPrimaryYearlyComparison = data.primaryYearlyComparison.filter(
         item => {
             return selectedYears.every(
@@ -381,13 +389,25 @@ const RayOfHopeAnalysis = () => {
         return new Intl.NumberFormat('en-SG', {
             style: 'currency',
             currency: 'SGD',
-            maximumFractionDigits: 2,
-            minimumFractionDigits: 2
+            maximumFractionDigits: 0,  // Change from 2 to 0
+            minimumFractionDigits: 0   // Change from 2 to 0
         }).format(amount);
     };
 
     const formatPercent = (value) => {
-        return value.toFixed(2) + '%';
+        return value.toFixed(0) + '%';
+    };
+
+    const getFilterSummary = () => {
+        return (
+            <span className="ms-2 fs-6 text-muted">
+                {removeOutliers ? "(Excluding campaigns ≥ $1M)" : ""}
+                {(removeOutliers && (showOnlyCompleted || excludeGivingCircles)) ? " | " : ""}
+                {showOnlyCompleted ? "(Completed campaigns only)" : ""}
+                {(showOnlyCompleted && excludeGivingCircles) ? " | " : ""}
+                {excludeGivingCircles ? "(Excluding giving circles)" : ""}
+            </span>
+        );
     };
 
     if (data.loading) {
@@ -454,6 +474,7 @@ const RayOfHopeAnalysis = () => {
                     {excludeGivingCircles ? "Excluding giving circles" : "Including giving circles"}
                 </button>
             </div>
+
             {/* Improved Metrics and Categories Explanation */}
             <div className="row mt-4">
                 <div className="col-12">
@@ -470,7 +491,7 @@ const RayOfHopeAnalysis = () => {
                                     <h4 className="h6 fw-bold text-primary">Key Metrics</h4>
                                     <div className="border-start ps-3 mb-3">
                                         <p className="mb-2"><strong>Target Success Rate:</strong> The percentage of campaigns that fully met or exceeded their target amount.</p>
-                                        <p className="mb-0"><strong>Fundraising Efficiency:</strong> The ratio of total amount raised to total target amount, expressed as a percentage.</p>
+                                        <p className="mb-0"><strong>Target Completion %:</strong> The ratio of total amount raised to total target amount, expressed as a percentage.</p>
                                     </div>
                                 </div>
 
@@ -489,13 +510,7 @@ const RayOfHopeAnalysis = () => {
             </div>
             <div className="bg-white rounded-lg shadow p-4">
                 <div className="h4 mb-4">Overall Campaign Metrics: 2023 vs 2024
-                    <span className="ms-2 fs-6 text-muted">
-                        {removeOutliers ? " (Excluding campaigns ≥ $1M)" : ""}
-                        {(removeOutliers && (showOnlyCompleted || excludeGivingCircles)) ? " | " : ""}
-                        {showOnlyCompleted ? " (Completed campaigns only)" : ""}
-                        {(showOnlyCompleted && excludeGivingCircles) ? " | " : ""}
-                        {excludeGivingCircles ? "(Excluding giving circles)" : ""}
-                    </span>
+                    {getFilterSummary()}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -522,7 +537,7 @@ const RayOfHopeAnalysis = () => {
                                 <YAxis label={{ value: 'Percentage (%)', angle: -90, position: 'insideLeft' }} />
                                 <Tooltip formatter={(value, name) => formatPercent(value)} />
                                 <Legend />
-                                <Bar dataKey="FundraisingEfficiency" fill="#82ca9d" name="Fundraising Efficiency" />
+                                <Bar dataKey="FundraisingEfficiency" fill="#82ca9d" name="Target Completion %" />
                                 <Bar dataKey="TargetSuccessRate" fill="#FFBB28" name="Target Success Rate" />
                             </BarChart>
                         </ResponsiveContainer>
@@ -532,356 +547,43 @@ const RayOfHopeAnalysis = () => {
                 <div className="d-flex justify-content-center mb-4 mt-4">
                     <div className="card w-100">
                         <div className="card-body">
-                            <table className="table table-bordered">
-                                <thead className="table-light">
-                                    <tr>
-                                        <th className="text-start" style={{ width: "25%" }}>Metric</th>
-                                        {filteredOverallMetrics.map((item, index) => (
-                                            <th key={index} className="text-center" style={{ width: "25%" }}>
-                                                {item.Year}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td className="fw-medium">Total Campaigns</td>
-                                        {filteredOverallMetrics.map((item, index) => (
-                                            <td key={index} className="text-end">
-                                                {item.Campaigns.toLocaleString()}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                    <tr>
-                                        <td className="fw-medium">Campaigns with Target Met</td>
-                                        {filteredOverallMetrics.map((item, index) => (
-                                            <td key={index} className="text-end">
-                                                {item.CampaignsMetTarget.toLocaleString()}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                    <tr>
-                                        <td className="fw-medium">Target Success Rate</td>
-                                        {filteredOverallMetrics.map((item, index) => (
-                                            <td key={index} className="text-end">
-                                                {formatPercent(item.TargetSuccessRate)}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                    <tr>
-                                        <td className="fw-medium">Amount Raised</td>
-                                        {filteredOverallMetrics.map((item, index) => (
-                                            <td key={index} className="text-end">
-                                                {formatAmount(item.AmountRaised)}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                    <tr>
-                                        <td className="fw-medium">Target Amount</td>
-                                        {filteredOverallMetrics.map((item, index) => (
-                                            <td key={index} className="text-end">
-                                                {formatAmount(item.TargetAmount)}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                    <tr>
-                                        <td className="fw-medium">Fundraising Efficiency</td>
-                                        {filteredOverallMetrics.map((item, index) => (
-                                            <td key={index} className="text-end">
-                                                {formatPercent(item.FundraisingEfficiency)}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                {/* NEW: Primary Category Metrics Table */}
-                <div className="d-flex justify-content-center mb-4 mt-4">
-                    <div className="card w-100">
-                        <div className="card-body">
-                            <h4 className="mb-3">Metrics by Primary Category</h4>
-                            <div className="table-responsive">
-                                <table className="table table-bordered table-striped table-hover">
-                                    <thead className="table-light">
-                                        <tr>
-                                            <th className="text-start" style={{ width: "20%" }}>Primary Category</th>
-                                            <th className="text-center" colSpan="2">Campaigns</th>
-                                            <th className="text-center" colSpan="2">Success Rates</th>
-                                            <th className="text-center" colSpan="2">Financials</th>
-                                        </tr>
-                                        <tr>
-                                            <th></th>
-                                            <th className="text-center">Total</th>
-                                            <th className="text-center">Target Met</th>
-                                            <th className="text-center">Target Success</th>
-                                            <th className="text-center">Fundraising Efficiency</th>
-                                            <th className="text-center">Amount Raised</th>
-                                            <th className="text-center">Target Amount</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {data.primaryCategories.map((category, categoryIndex) => {
-                                            // Find data for this category for both years
-                                            const categoryData = {};
-                                            selectedYears.forEach(year => {
-                                                const yearData = data.primaryCategoryMetrics.find(
-                                                    metric => metric.Category === category && metric.Year === year
-                                                );
-                                                if (yearData) {
-                                                    categoryData[year] = yearData;
-                                                }
-                                            });
-
-                                            // Only show categories that have data in the selected years
-                                            if (Object.keys(categoryData).length === 0) {
-                                                return null;
-                                            }
-
-                                            return (
-                                                <React.Fragment key={categoryIndex}>
-                                                    <tr className="table-secondary">
-                                                        <td colSpan="7" className="fw-bold">{category}</td>
-                                                    </tr>
-                                                    {selectedYears.map(year => {
-                                                        const yearData = categoryData[year];
-                                                        if (!yearData) return null;
-
-                                                        return (
-                                                            <tr key={`${category}-${year}`}>
-                                                                <td className="ps-4">{year}</td>
-                                                                <td className="text-end">{yearData.Campaigns}</td>
-                                                                <td className="text-end">{yearData.CampaignsMetTarget}</td>
-                                                                <td className="text-end">{formatPercent(yearData.TargetSuccessRate)}</td>
-                                                                <td className="text-end">{formatPercent(yearData.FundraisingEfficiency)}</td>
-                                                                <td className="text-end">{formatAmount(yearData.AmountRaised)}</td>
-                                                                <td className="text-end">{formatAmount(yearData.TargetAmount)}</td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </React.Fragment>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* NEW: Primary Category Comparison Bar Chart */}
-                <div className="bg-white rounded shadow p-4 mb-4">
-                    <h2 className="h4 mb-3">Primary Category Comparison: 2023 vs 2024
-                        <span className="ms-2 fs-6 text-muted">
-                            {removeOutliers ? "(Excluding campaigns ≥ $1M)" : ""}
-                            {(removeOutliers && (showOnlyCompleted || excludeGivingCircles)) ? " | " : ""}
-                            {showOnlyCompleted ? "(Completed campaigns only)" : ""}
-                            {(showOnlyCompleted && excludeGivingCircles) ? " | " : ""}
-                            {excludeGivingCircles ? "(Excluding giving circles)" : ""}
-                        </span>
-                    </h2>
-
-                    <div className="mb-3">
-                        <label className="form-label fw-medium">Select Metric to Compare:</label>
-                        <select
-                            className="form-select w-auto"
-                            value={selectedPrimaryMetric}
-                            onChange={(e) => setSelectedPrimaryMetric(e.target.value)}
-                        >
-                            <option value="FundraisingEfficiency">Fundraising Efficiency (%)</option>
-                            <option value="TargetSuccessRate">Target Success Rate (%)</option>
-                            <option value="Campaigns">Number of Campaigns</option>
-                            <option value="CampaignsMetTarget">Campaigns with Target Met</option>
-                            <option value="AmountRaised">Amount Raised</option>
-                            <option value="TargetAmount">Target Amount</option>
-                        </select>
-                    </div>
-
-                    <div style={{ height: '600px' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart
-                                data={filteredPrimaryYearlyComparison}
-                                margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
-                            >
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="Category" />
-                                <YAxis
-                                    label={
-                                        selectedPrimaryMetric === 'FundraisingEfficiency' || selectedPrimaryMetric === 'TargetSuccessRate' ?
-                                            { value: 'Percentage (%)', angle: -90, position: 'insideLeft', offset: 10 } :
-                                            selectedPrimaryMetric === 'Campaigns' || selectedPrimaryMetric === 'CampaignsMetTarget' ?
-                                                { value: 'Number of Campaigns', angle: -90, position: 'insideLeft', offset: 10 } :
-                                                { value: 'Amount (SGD)', angle: -90, position: 'insideLeft', offset: 10 }
-                                    }
-                                />
-                                <Tooltip
-                                    formatter={(value, name) => {
-                                        if (name.includes('FundraisingEfficiency') || name.includes('TargetSuccessRate')) return formatPercent(value);
-                                        if (name.includes('AmountRaised') || name.includes('TargetAmount')) return formatAmount(value);
-                                        return value.toLocaleString();
-                                    }}
-                                />
-                                <Legend />
-                                {selectedYears.map((year, index) => (
-                                    <Bar
-                                        key={year}
-                                        dataKey={`${selectedPrimaryMetric}_${year}`}
-                                        fill={index === 0 ? '#0d6efd' : '#20c997'}
-                                        name={`${selectedPrimaryMetric === 'FundraisingEfficiency' ? 'Fundraising Efficiency' :
-                                            selectedPrimaryMetric === 'TargetSuccessRate' ? 'Target Success Rate' :
-                                                selectedPrimaryMetric === 'Campaigns' ? 'Campaigns' :
-                                                    selectedPrimaryMetric === 'CampaignsMetTarget' ? 'Campaigns with Target Met' :
-                                                        selectedPrimaryMetric === 'AmountRaised' ? 'Amount Raised' : 'Target Amount'} (${year})`}
-                                    />
-                                ))}
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Original Category-wise Metrics Table */}
-                <div className="d-flex justify-content-center mb-4 mt-4">
-                    <div className="card w-100">
-                        <div className="card-body">
-                            <h4 className="mb-3">Metrics by Beneficiary Category</h4>
-                            <div className="table-responsive">
-                                <table className="table table-bordered table-striped table-hover">
-                                    <thead className="table-light">
-                                        <tr>
-                                            <th className="text-start" style={{ width: "20%" }}>Beneficiary Category</th>
-                                            <th className="text-center" colSpan="2">Campaigns</th>
-                                            <th className="text-center" colSpan="2">Success Rates</th>
-                                            <th className="text-center" colSpan="2">Financials</th>
-                                        </tr>
-                                        <tr>
-                                            <th></th>
-                                            <th className="text-center">Total</th>
-                                            <th className="text-center">Target Met</th>
-                                            <th className="text-center">Target Success</th>
-                                            <th className="text-center">Fundraising Efficiency</th>
-                                            <th className="text-center">Amount Raised</th>
-                                            <th className="text-center">Target Amount</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {data.sourceCategories.map((category, categoryIndex) => {
-                                            // Find data for this category for both years
-                                            const categoryData = {};
-                                            selectedYears.forEach(year => {
-                                                const yearData = data.categoryMetrics.find(
-                                                    metric => metric.Category === category && metric.Year === year
-                                                );
-                                                if (yearData) {
-                                                    categoryData[year] = yearData;
-                                                }
-                                            });
-
-                                            // Only show categories that have data in the selected years
-                                            if (Object.keys(categoryData).length === 0) {
-                                                return null;
-                                            }
-
-                                            return (
-                                                <React.Fragment key={categoryIndex}>
-                                                    <tr className="table-secondary">
-                                                        <td colSpan="7" className="fw-bold">{category}</td>
-                                                    </tr>
-                                                    {selectedYears.map(year => {
-                                                        const yearData = categoryData[year];
-                                                        if (!yearData) return null;
-
-                                                        return (
-                                                            <tr key={`${category}-${year}`}>
-                                                                <td className="ps-4">{year}</td>
-                                                                <td className="text-end">{yearData.Campaigns}</td>
-                                                                <td className="text-end">{yearData.CampaignsMetTarget}</td>
-                                                                <td className="text-end">{formatPercent(yearData.TargetSuccessRate)}</td>
-                                                                <td className="text-end">{formatPercent(yearData.FundraisingEfficiency)}</td>
-                                                                <td className="text-end">{formatAmount(yearData.AmountRaised)}</td>
-                                                                <td className="text-end">{formatAmount(yearData.TargetAmount)}</td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </React.Fragment>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="bg-white rounded shadow p-4 mb-4 mt-4">
-                <h2 className="h4 mb-3">Beneficiary Category Comparison: 2023 vs 2024
-                    <span className="ms-2 fs-6 text-muted">
-                        {removeOutliers ? "(Excluding campaigns ≥ $1M)" : ""}
-                        {(removeOutliers && (showOnlyCompleted || excludeGivingCircles)) ? " | " : ""}
-                        {showOnlyCompleted ? "(Completed campaigns only)" : ""}
-                        {(showOnlyCompleted && excludeGivingCircles) ? " | " : ""}
-                        {excludeGivingCircles ? "(Excluding giving circles)" : ""}
-                    </span>
-                </h2>
-
-                <div className="mb-3">
-                    <label className="form-label fw-medium">Select Metric to Compare:</label>
-                    <select
-                        className="form-select w-auto"
-                        value={selectedMetric}
-                        onChange={(e) => setSelectedMetric(e.target.value)}
-                    >
-                        <option value="FundraisingEfficiency">Fundraising Efficiency (%)</option>
-                        <option value="TargetSuccessRate">Target Success Rate (%)</option>
-                        <option value="Campaigns">Number of Campaigns</option>
-                        <option value="CampaignsMetTarget">Campaigns with Target Met</option>
-                        <option value="AmountRaised">Amount Raised</option>
-                        <option value="TargetAmount">Target Amount</option>
-                    </select>
-                </div>
-
-                <div style={{ height: '600px' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                            data={filteredYearlyComparison}
-                            margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="Category" />
-                            <YAxis
-                                label={
-                                    selectedMetric === 'FundraisingEfficiency' || selectedMetric === 'TargetSuccessRate' ?
-                                        { value: 'Percentage (%)', angle: -90, position: 'insideLeft', offset: 10 } :
-                                        selectedMetric === 'Campaigns' || selectedMetric === 'CampaignsMetTarget' ?
-                                            { value: 'Number of Campaigns', angle: -90, position: 'insideLeft', offset: 10 } :
-                                            { value: 'Amount (SGD)', angle: -90, position: 'insideLeft', offset: 10 }
-                                }
+                            <MetricsTable
+                                yearlyMetrics={data.yearlyMetrics}
+                                selectedYears={selectedYears}
+                                formatAmount={formatAmount}
+                                formatPercent={formatPercent}
                             />
-                            <Tooltip
-                                formatter={(value, name) => {
-                                    if (name.includes('FundraisingEfficiency') || name.includes('TargetSuccessRate')) return formatPercent(value);
-                                    if (name.includes('AmountRaised') || name.includes('TargetAmount')) return formatAmount(value);
-                                    return value.toLocaleString();
-                                }}
-                            />
-                            <Legend />
-                            {selectedYears.map((year, index) => (
-                                <Bar
-                                    key={year}
-                                    dataKey={`${selectedMetric}_${year}`}
-                                    fill={index === 0 ? '#0d6efd' : '#20c997'}
-                                    name={`${selectedMetric === 'FundraisingEfficiency' ? 'Fundraising Efficiency' :
-                                        selectedMetric === 'TargetSuccessRate' ? 'Target Success Rate' :
-                                            selectedMetric === 'Campaigns' ? 'Campaigns' :
-                                                selectedMetric === 'CampaignsMetTarget' ? 'Campaigns with Target Met' :
-                                                    selectedMetric === 'AmountRaised' ? 'Amount Raised' : 'Target Amount'} (${year})`}
-                                />
-                            ))}
-                        </BarChart>
-                    </ResponsiveContainer>
+                        </div>
+                    </div>
                 </div>
+
+                {/* Use the reusable CategoryAnalysis component for Primary Categories */}
+                <CategoryAnalysis
+                    title="Metrics by Primary Category"
+                    description="Primary Category"
+                    categories={data.primaryCategories}
+                    categoryMetrics={data.primaryCategoryMetrics}
+                    selectedYears={selectedYears}
+                    selectedMetric={selectedPrimaryMetric}
+                    filteredComparison={filteredPrimaryYearlyComparison}
+                    formatAmount={formatAmount}
+                    formatPercent={formatPercent}
+                    onMetricChange={setSelectedPrimaryMetric}
+                />
+
+                {/* Use the same reusable component for Beneficiary Categories */}
+                <CategoryAnalysis
+                    title="Metrics by Beneficiary Category"
+                    description="Beneficiary Category"
+                    categories={data.sourceCategories}
+                    categoryMetrics={data.categoryMetrics}
+                    selectedYears={selectedYears}
+                    selectedMetric={selectedMetric}
+                    filteredComparison={filteredYearlyComparison}
+                    formatAmount={formatAmount}
+                    formatPercent={formatPercent}
+                    onMetricChange={setSelectedMetric}
+                />
             </div>
         </div>
     );
