@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import React, { useState, useEffect, useRef } from 'react';
+import * as d3 from 'd3';
 import * as XLSX from 'xlsx';
-import CategoryAnalysis from './CategoryAnalysis'; // Import the new component
-import MetricsTable from './MetricsTable';
+import CategoryAnalysisD3 from './CategoryAnalysisD3';
+import MetricsTableD3 from './MetricsTableD3';
+import D3BarChart from './D3BarChart';
 
 const RayOfHopeAnalysis = () => {
     const [data, setData] = useState({
@@ -389,8 +390,8 @@ const RayOfHopeAnalysis = () => {
         return new Intl.NumberFormat('en-SG', {
             style: 'currency',
             currency: 'SGD',
-            maximumFractionDigits: 0,  // Change from 2 to 0
-            minimumFractionDigits: 0   // Change from 2 to 0
+            maximumFractionDigits: 0,
+            minimumFractionDigits: 0
         }).format(amount);
     };
 
@@ -513,41 +514,32 @@ const RayOfHopeAnalysis = () => {
                     {getFilterSummary()}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <h3 className="text-lg font-medium mb-2">Campaign Counts</h3>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={filteredOverallMetrics} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="Year" />
-                                <YAxis label={{ value: 'Number of Campaigns', angle: -90, position: 'insideLeft' }} />
-                                <Tooltip />
-                                <Legend />
-                                <Bar dataKey="Campaigns" fill="#8884d8" name="Total Campaigns" />
-                                <Bar dataKey="CampaignsMetTarget" fill="#FF8042" name="Campaigns Met Target" />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
+                    <D3BarChart
+                        data={filteredOverallMetrics}
+                        keys={['Campaigns', 'CampaignsMetTarget']}
+                        colors={['#8884d8', '#FF8042']}
+                        title="Campaign Counts"
+                        yAxisLabel="Number of Campaigns"
+                        barLabels={['Total Campaigns', 'Campaigns Met Target']}
+                        valueFormat={(value) => value}
+                    />
 
-                    <div>
-                        <h3 className="text-lg font-medium mb-2">Success Metrics (%)</h3>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={filteredOverallMetrics} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="Year" />
-                                <YAxis label={{ value: 'Percentage (%)', angle: -90, position: 'insideLeft' }} />
-                                <Tooltip formatter={(value, name) => formatPercent(value)} />
-                                <Legend />
-                                <Bar dataKey="FundraisingEfficiency" fill="#82ca9d" name="Target Completion %" />
-                                <Bar dataKey="TargetSuccessRate" fill="#FFBB28" name="Target Success Rate" />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
+                    <D3BarChart
+                        data={filteredOverallMetrics}
+                        keys={['FundraisingEfficiency', 'TargetSuccessRate']}
+                        colors={['#82ca9d', '#FFBB28']}
+                        title="Success Metrics (%)"
+                        yAxisLabel="Percentage (%)"
+                        barLabels={['Target Completion %', 'Target Success Rate']}
+                        yFormat={(value) => value + '%'}
+                        valueFormat={(value) => value + '%'}
+                    />
                 </div>
 
                 <div className="d-flex justify-content-center mb-4 mt-4">
                     <div className="card w-100">
                         <div className="card-body">
-                            <MetricsTable
+                            <MetricsTableD3
                                 yearlyMetrics={data.yearlyMetrics}
                                 selectedYears={selectedYears}
                                 formatAmount={formatAmount}
@@ -557,8 +549,8 @@ const RayOfHopeAnalysis = () => {
                     </div>
                 </div>
 
-                {/* Use the reusable CategoryAnalysis component for Primary Categories */}
-                <CategoryAnalysis
+                {/* Use the reusable CategoryAnalysisD3 component for Primary Categories */}
+                <CategoryAnalysisD3
                     title="Metrics by Primary Category"
                     description="Primary Category"
                     categories={data.primaryCategories}
@@ -572,7 +564,7 @@ const RayOfHopeAnalysis = () => {
                 />
 
                 {/* Use the same reusable component for Beneficiary Categories */}
-                <CategoryAnalysis
+                <CategoryAnalysisD3
                     title="Metrics by Beneficiary Category"
                     description="Beneficiary Category"
                     categories={data.sourceCategories}

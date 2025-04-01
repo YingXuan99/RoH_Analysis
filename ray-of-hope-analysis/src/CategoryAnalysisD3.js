@@ -1,5 +1,5 @@
-import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import React, { useRef, useLayoutEffect } from 'react';
+import * as d3 from 'd3';
 
 // Component to display colored percentage change
 const PercentageChange = ({ value, suffix = '%' }) => {
@@ -17,7 +17,7 @@ const PercentageChange = ({ value, suffix = '%' }) => {
     );
 };
 
-const CategoryAnalysis = ({
+const CategoryAnalysisD3 = ({
     title,
     description,
     categories,
@@ -29,6 +29,9 @@ const CategoryAnalysis = ({
     formatPercent,
     onMetricChange
 }) => {
+    // D3 chart reference
+    const chartRef = useRef(null);
+
     // Helper to get display name for metric
     const getMetricDisplayName = (metricKey) => {
         switch (metricKey) {
@@ -49,20 +52,20 @@ const CategoryAnalysis = ({
     // Helper to get Y-axis label based on metric
     const getYAxisLabel = (metric) => {
         if (metric === 'FundraisingEfficiency' || metric === 'TargetSuccessRate') {
-            return { value: 'Percentage (%)', angle: -90, position: 'insideLeft', offset: 10 };
+            return "Percentage (%)";
         } else if (metric === 'Campaigns' || metric === 'CampaignsMetTarget' || metric === 'Donors' || metric === 'AvgDonorsPerCampaign') {
-            return { value: 'Count', angle: -90, position: 'insideLeft', offset: 10 };
+            return "Count";
         } else {
-            return { value: 'Amount (SGD)', angle: -90, position: 'insideLeft', offset: 10 };
+            return "Amount (SGD)";
         }
     };
 
-    // Helper to format tooltip values
-    const formatTooltipValue = (value, name) => {
-        if (name.includes('FundraisingEfficiency') || name.includes('TargetSuccessRate')) {
+    // Helper to format values
+    const formatValue = (value, metric) => {
+        if (metric === 'FundraisingEfficiency' || metric === 'TargetSuccessRate') {
             return formatPercent(value);
-        } else if (name.includes('AmountRaised') || name.includes('TargetAmount') || 
-                  name.includes('AvgAmountPerDonor') || name.includes('AvgAmountPerCampaign')) {
+        } else if (metric === 'AmountRaised' || metric === 'TargetAmount' ||
+            metric === 'AvgAmountPerDonor' || metric === 'AvgAmountPerCampaign') {
             return formatAmount(value);
         }
         return value.toLocaleString();
@@ -70,24 +73,285 @@ const CategoryAnalysis = ({
 
     // Calculate percentage change between years
     const calculatePercentageChange = (current, previous) => {
-        if (previous === 0) return 0; // Avoid division by zero
-        return ((current - previous) / previous) * 100;
+        if (previous === 0 && current > 0) return 100;
+        else if (previous === 0) return 0; // Avoid division by zero
+        else return ((current - previous) / previous) * 100;
+    };
+
+    // Add this inside your CategoryAnalysisD3 component:
+    useLayoutEffect(() => {
+        // Initial render
+        if (chartRef.current && filteredComparison.length > 0) {
+            createD3CategoryChart();
+        }
+
+        // Add resize listener
+        const handleResize = () => {
+            if (chartRef.current && filteredComparison.length > 0) {
+                // Clear previous chart
+                d3.select(chartRef.current).selectAll("*").remove();
+                // Redraw with new dimensions
+                createD3CategoryChart();
+            }
+        };
+
+        window.addEventListener('resize', handleResize);
+
+        // Clean up
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, [filteredComparison, selectedMetric, selectedYears]);
+
+    // Function to create D3 category comparison chart
+    const createD3CategoryChart = () => {
+        if (!chartRef.current) return;
+
+        // Clear previous chart
+        d3.select(chartRef.current).selectAll("*").remove();
+
+        // Set dimensions and margins
+        const margin = { top: 50, right: 120, bottom: 100, left: 100 };
+
+        // Create SVG element
+        // Replace the SVG creation code with this:
+        const containerWidth = chartRef.current.clientWidth;
+        const containerHeight = 600; // Or use clientHeight if container has a defined height
+
+        const svg = d3.select(chartRef.current)
+            .append("svg")
+            .attr("width", "100%")
+            .attr("height", containerHeight)
+            .attr("viewBox", `0 0 ${containerWidth} ${containerHeight}`)
+            .attr("preserveAspectRatio", "xMidYMid meet")
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // Then adjust the width and height calculations:
+        const width = containerWidth - margin.left - margin.right;
+        const height = containerHeight - margin.top - margin.bottom;
+
+        const axisTitleFontSize = Math.max(0.75, Math.min(1, width / 800));
+        const barValueFontSize = Math.max(0.625, Math.min(0.875, width / 960));
+        const tickLabelFontSize = Math.max(0.625, Math.min(0.875, width / 1120));
+
+        // Show only top 10 categories for better readability if more than 10
+        const dataToShow = filteredComparison.slice(0, Math.min(10, filteredComparison.length));
+
+        // Create x scale (categories)
+        const x0 = d3.scaleBand()
+            .domain(dataToShow.map(d => d.Category))
+            .rangeRound([0, width])
+            .paddingInner(0.1);
+
+        // Create inner x scale (years)
+        const x1 = d3.scaleBand()
+            .domain(selectedYears)
+            .rangeRound([0, x0.bandwidth()])
+            .padding(0.05);
+
+        // Define max y value based on selected metric
+        const maxValue = d3.max(dataToShow, d =>
+            d3.max(selectedYears, year => d[`${selectedMetric}_${year}`])
+        );
+
+        // Create y scale
+        const y = d3.scaleLinear()
+            .domain([0, maxValue * 1.1]) // Add 10% padding at the top
+            .nice()
+            .rangeRound([height, 0]);
+
+        // Define colors for years
+        const colorScale = d3.scaleOrdinal()
+            .domain(selectedYears)
+            .range(['#0d6efd', '#20c997']);
+
+        // Add X axis
+        svg.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x0))
+        .selectAll("text")
+        .text(d => {
+            // Split long labels into multiple lines
+            const labelMap = {
+                'children-12-years-and-below': ['children'],
+                'other-marginalised-communities': [ 'marginalized', 'comm'],
+                'youth-from-13-to-21-years': ['youth'],
+                'families-in-need': ['families']
+            };
+            return labelMap[d] ? labelMap[d].join('\n') : d;
+        })
+        .style("font-size", `${tickLabelFontSize}rem`)
+        .style("text-anchor", "middle");
+
+        // Add Y axis
+        svg.append("g")
+            .call(d3.axisLeft(y)
+                .ticks(10)
+                .tickFormat(d => {
+                    if (selectedMetric === 'FundraisingEfficiency' || selectedMetric === 'TargetSuccessRate') {
+                        return d + "%";
+                    } else if (selectedMetric === 'AmountRaised' || selectedMetric === 'TargetAmount') {
+                        return "$" + d3.format(",.0f")(d);
+                    }
+                    return d;
+                })
+            )
+            .style("font-size", `${tickLabelFontSize}rem`);
+
+        // Add Y axis label
+        svg.append("text")
+            .attr("transform", "rotate(-90)")
+            .attr("y", -60)
+            .attr("x", -(height / 2))
+            .attr("text-anchor", "middle")
+            .attr("font-size", `${axisTitleFontSize}rem`)
+            .text(getYAxisLabel(selectedMetric));
+
+        // Add chart title
+        svg.append("text")
+            .attr("x", width / 2)
+            .attr("y", -20)
+            .attr("text-anchor", "middle")
+            .attr("font-size", "16px")
+            .attr("font-weight", "bold")
+            .text(`${description} Comparison: ${getMetricDisplayName(selectedMetric)}`);
+
+        // Add bars
+        svg.append("g")
+            .selectAll("g")
+            .data(dataToShow)
+            .join("g")
+            .attr("transform", d => `translate(${x0(d.Category)},0)`)
+            .selectAll("rect")
+            .data(d => selectedYears.map(year => ({
+                category: d.Category,
+                year: year,
+                value: d[`${selectedMetric}_${year}`]
+            })))
+            .join("rect")
+            .attr("x", d => x1(d.year))
+            .attr("y", d => y(d.value))
+            .attr("width", x1.bandwidth())
+            .attr("height", d => height - y(d.value))
+            .attr("fill", d => colorScale(d.year))
+            .attr("rx", 4) // Rounded corners
+            .attr("ry", 4);
+
+        // Add values on top of bars
+        svg.append("g")
+            .selectAll("g")
+            .data(dataToShow)
+            .join("g")
+            .attr("transform", d => `translate(${x0(d.Category)},0)`)
+            .selectAll("text")
+            .data(d => selectedYears.map(year => ({
+                category: d.Category,
+                year: year,
+                value: d[`${selectedMetric}_${year}`]
+            })))
+            .join("text")
+            .attr("x", d => x1(d.year) + x1.bandwidth() / 2)
+            .attr("y", d => y(d.value) - 5)
+            .attr("text-anchor", "middle")
+            .attr("font-size", `${barValueFontSize}rem`)
+            .text(d => {
+                if (selectedMetric === 'FundraisingEfficiency' || selectedMetric === 'TargetSuccessRate') {
+                    return `${d.value.toFixed(0)}%`;
+                } else if (selectedMetric === 'AmountRaised' || selectedMetric === 'TargetAmount') {
+                    return `$${d.value >= 1000 ? (d.value / 1000).toFixed(0) + 'K' : d.value}`;
+                }
+                return d.value.toFixed(0);
+            });
+
+        // Add a legend
+        const legend = svg.append("g")
+            .attr("font-family", "sans-serif")
+            .attr("font-size", `${tickLabelFontSize}rem`)
+            .attr("text-anchor", "start")
+            .selectAll("g")
+            .data(selectedYears)
+            .join("g")
+            .attr("transform", (d, i) => `translate(${width - 100},${i * 20})`);
+
+        legend.append("rect")
+            .attr("x", 0)
+            .attr("width", 19)
+            .attr("height", 19)
+            .attr("fill", d => colorScale(d));
+
+        legend.append("text")
+            .attr("x", 24)
+            .attr("y", 9.5)
+            .attr("dy", "0.32em")
+            .text(d => d);
+
+        // Add tooltips
+        const tooltip = d3.select(chartRef.current)
+            .append("div")
+            .attr("class", "tooltip")
+            .style("position", "absolute")
+            .style("opacity", 0)
+            .style("background-color", "white")
+            .style("border", "1px solid #ddd")
+            .style("border-radius", "4px")
+            .style("padding", "8px")
+            .style("pointer-events", "none");
+
+        svg.selectAll("rect")
+            .on("mouseover", function (event, d) {
+                // Calculate percentage change
+                let changePercentage = null;
+                if (selectedYears.length === 2 && selectedYears.includes('2023') && selectedYears.includes('2024')) {
+                    const category = d.category;
+                    const categoryData = filteredComparison.find(item => item.Category === category);
+
+                    if (categoryData) {
+                        const value2023 = categoryData[`${selectedMetric}_2023`];
+                        const value2024 = categoryData[`${selectedMetric}_2024`];
+                        changePercentage = calculatePercentageChange(value2024, value2023);
+                    }
+                }
+
+                // Show tooltip
+                tooltip.transition()
+                    .duration(200)
+                    .style("opacity", .9);
+
+                let tooltipText = `
+                    <strong>${d.category}</strong><br>
+                    ${getMetricDisplayName(selectedMetric)} (${d.year}): ${formatValue(d.value, selectedMetric)}
+                `;
+
+                if (changePercentage !== null && d.year === '2024') {
+                    tooltipText += `<br>YoY Change: ${changePercentage > 0 ? '+' : ''}${changePercentage.toFixed(1)}%`;
+                }
+
+                tooltip.html(tooltipText)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            })
+            .on("mouseout", function () {
+                tooltip.transition()
+                    .duration(500)
+                    .style("opacity", 0);
+            });
     };
 
     // CSS for sticky header
     const stickyHeaderStyle = {
         position: "sticky",
         top: 0,
-        backgroundColor: "#f8f9fa", // Light background to match table-light
-        zIndex: 10, // Ensure it stays above other elements
-        borderBottom: "2px solid #dee2e6" // More visible border for the sticky header
+        backgroundColor: "#f8f9fa",
+        zIndex: 10,
+        borderBottom: "2px solid #dee2e6"
     };
 
     // CSS for the table container to enable proper scrolling
     const tableContainerStyle = {
-        maxHeight: "600px", // Set a max height for scrolling
+        maxHeight: "600px",
         overflowY: "auto",
-        border: "1px solid #dee2e6" // Match table border
+        border: "1px solid #dee2e6"
     };
 
     // Sort categories with priority ones first
@@ -98,33 +362,33 @@ const CategoryAnalysis = ({
             'mental-health',
             'youth-from-13-to-21-years'
         ];
-        
+
         // Check if they're in the priority list
         const aIndex = priorityCategories.indexOf(a);
         const bIndex = priorityCategories.indexOf(b);
-        
+
         // If both are in priority list, sort by their position in the priority list
         if (aIndex !== -1 && bIndex !== -1) {
             return aIndex - bIndex;
         }
-        
+
         // If only a is in priority list, it comes first
         if (aIndex !== -1) {
             return -1;
         }
-        
+
         // If only b is in priority list, it comes first
         if (bIndex !== -1) {
             return 1;
         }
-        
+
         // For everything else, sort alphabetically
         return a.localeCompare(b);
     });
 
     return (
         <>
-            {/* Metrics Table */}
+            {/* Metrics Table - Same as before but with enhanced styling */}
             <div className="d-flex justify-content-center mb-4 mt-4">
                 <div className="card w-100">
                     <div className="card-body">
@@ -259,13 +523,10 @@ const CategoryAnalysis = ({
                 </div>
             </div>
 
-            {/* Comparison Chart */}
+            {/* D3 Chart Section */}
             <div className="bg-white rounded shadow p-4 mb-4">
                 <h2 className="h4 mb-3">
                     {description} Comparison: 2023 vs 2024
-                    <span className="ms-2 fs-6 text-muted">
-                        {/* You might want to pass filter info as props instead of hardcoding */}
-                    </span>
                 </h2>
 
                 <div className="mb-3">
@@ -289,31 +550,18 @@ const CategoryAnalysis = ({
                     </select>
                 </div>
 
-                <div style={{ height: '600px' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                            data={filteredComparison}
-                            margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="Category" />
-                            <YAxis label={getYAxisLabel(selectedMetric)} />
-                            <Tooltip formatter={formatTooltipValue} />
-                            <Legend />
-                            {selectedYears.map((year, index) => (
-                                <Bar
-                                    key={year}
-                                    dataKey={`${selectedMetric}_${year}`}
-                                    fill={index === 0 ? '#0d6efd' : '#20c997'}
-                                    name={`${getMetricDisplayName(selectedMetric)} (${year})`}
-                                />
-                            ))}
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
+                {/* D3 Chart Container */}
+                <div ref={chartRef} style={{ width: '100%', height: '600px' }}></div>
+
+                {/* If there are more than 10 categories, show message */}
+                {filteredComparison.length > 10 && (
+                    <div className="text-muted mt-2 text-center">
+                        Showing top 10 categories. Use the table above to see all data.
+                    </div>
+                )}
             </div>
         </>
     );
 };
 
-export default CategoryAnalysis;
+export default CategoryAnalysisD3;
