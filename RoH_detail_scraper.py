@@ -105,77 +105,7 @@ def scrape_campaign_details():
         unique_campaigns.to_csv('ray_of_hope_campaigns_detailed.csv', index=False)
         print("Detailed campaign data saved to ray_of_hope_campaigns_detailed.csv instead")
     
-    # Create summary statistics
-    print("\nGenerating summary statistics...")
-    generate_summary_stats(unique_campaigns)
-    
     return unique_campaigns
-
-def generate_summary_stats(df):
-    """
-    Generate summary statistics about the campaigns
-    """
-    # Make sure numeric columns are the right types
-    df['Number of Donors'] = pd.to_numeric(df['Number of Donors'], errors='coerce')
-    df['Days Active'] = pd.to_numeric(df['Days Active'], errors='coerce')
-    df['Days to Go'] = pd.to_numeric(df['Days to Go'], errors='coerce')
-    df['Amount Raised'] = pd.to_numeric(df['Amount Raised'], errors='coerce')
-    df['Target Amount'] = pd.to_numeric(df['Target Amount'], errors='coerce')
-    df['Completion Percentage'] = pd.to_numeric(df['Completion Percentage'], errors='coerce')
-    
-    # Calculate overall statistics
-    total_campaigns = len(df)
-    total_raised = df['Amount Raised'].sum()
-    total_target = df['Target Amount'].sum()
-    overall_completion = (total_raised / total_target * 100) if total_target > 0 else 0
-    
-    # Calculate average statistics
-    avg_donors = df['Number of Donors'].mean()
-    avg_days_active = df['Days Active'].mean()
-    avg_days_to_go = df['Days to Go'].mean()
-    avg_amount_raised = df['Amount Raised'].mean()
-    avg_target_amount = df['Target Amount'].mean()
-    avg_completion = df['Completion Percentage'].mean()
-    
-    # Calculate statistics by Source Category
-    # First, explode the Source Category column
-    df_exploded = df.copy()
-    df_exploded['Source Category'] = df_exploded['Source Category'].str.split(', ')
-    df_exploded = df_exploded.explode('Source Category')
-    
-    # Group by Source Category and calculate statistics
-    category_stats = df_exploded.groupby('Source Category').agg({
-        'Amount Raised': ['sum', 'mean', 'count'],
-        'Target Amount': ['sum', 'mean'],
-        'Completion Percentage': 'mean',
-        'Number of Donors': ['sum', 'mean']
-    })
-    
-    # Create a summary DataFrame
-    summary = pd.DataFrame({
-        'Metric': [
-            'Total Campaigns', 'Total Amount Raised', 'Total Target Amount', 'Overall Completion Percentage',
-            'Average Donors per Campaign', 'Average Days Active', 'Average Days to Go',
-            'Average Amount Raised', 'Average Target Amount', 'Average Completion Percentage'
-        ],
-        'Value': [
-            total_campaigns, total_raised, total_target, overall_completion,
-            avg_donors, avg_days_active, avg_days_to_go,
-            avg_amount_raised, avg_target_amount, avg_completion
-        ]
-    })
-    
-    # Save summary statistics
-    try:
-        summary.to_excel('ray_of_hope_summary_stats.xlsx', index=False)
-        category_stats.to_excel('ray_of_hope_category_stats.xlsx')
-        print("Summary statistics saved to ray_of_hope_summary_stats.xlsx")
-        print("Category statistics saved to ray_of_hope_category_stats.xlsx")
-    except Exception as e:
-        print(f"Error saving summary Excel files: {e}")
-        summary.to_csv('ray_of_hope_summary_stats.csv', index=False)
-        category_stats.to_csv('ray_of_hope_category_stats.csv')
-        print("Summary statistics saved to CSV files instead")
 
 if __name__ == "__main__":
     print("Starting to scrape additional campaign details...")
