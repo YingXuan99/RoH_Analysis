@@ -32,6 +32,13 @@ const CategoryAnalysisD3 = ({
     // D3 chart reference
     const chartRef = useRef(null);
 
+    const debounce = (fn, ms) => {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn(...args), ms);
+        };
+    };
     // Helper to get display name for metric
     const getMetricDisplayName = (metricKey) => {
         switch (metricKey) {
@@ -85,15 +92,15 @@ const CategoryAnalysisD3 = ({
             createD3CategoryChart();
         }
 
-        // Add resize listener
-        const handleResize = () => {
+        // Add resize listener with debounce
+        const handleResize = debounce(() => {
             if (chartRef.current && filteredComparison.length > 0) {
                 // Clear previous chart
                 d3.select(chartRef.current).selectAll("*").remove();
                 // Redraw with new dimensions
                 createD3CategoryChart();
             }
-        };
+        }, 250); // 250ms debounce time
 
         window.addEventListener('resize', handleResize);
 
@@ -168,21 +175,21 @@ const CategoryAnalysisD3 = ({
 
         // Add X axis
         svg.append("g")
-        .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(x0))
-        .selectAll("text")
-        .text(d => {
-            // Split long labels into multiple lines
-            const labelMap = {
-                'children-12-years-and-below': ['children'],
-                'other-marginalised-communities': [ 'marginalized', 'comm'],
-                'youth-from-13-to-21-years': ['youth'],
-                'families-in-need': ['families']
-            };
-            return labelMap[d] ? labelMap[d].join('\n') : d;
-        })
-        .style("font-size", `${tickLabelFontSize}rem`)
-        .style("text-anchor", "middle");
+            .attr("transform", `translate(0,${height})`)
+            .call(d3.axisBottom(x0))
+            .selectAll("text")
+            .text(d => {
+                // Split long labels into multiple lines
+                const labelMap = {
+                    'children-12-years-and-below': ['children'],
+                    'other-marginalised-communities': ['marginalized', 'comm'],
+                    'youth-from-13-to-21-years': ['youth'],
+                    'families-in-need': ['families']
+                };
+                return labelMap[d] ? labelMap[d].join('\n') : d;
+            })
+            .style("font-size", `${tickLabelFontSize}rem`)
+            .style("text-anchor", "middle");
 
         // Add Y axis
         svg.append("g")

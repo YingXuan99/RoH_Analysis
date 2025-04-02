@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
-import * as d3 from 'd3';
+import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import CategoryAnalysisD3 from './CategoryAnalysisD3';
 import MetricsTableD3 from './MetricsTableD3';
@@ -20,7 +19,7 @@ const RayOfHopeAnalysis = () => {
     const [selectedYears, setSelectedYears] = useState(['2023', '2024']);
     const [selectedMetric, setSelectedMetric] = useState('FundraisingEfficiency');
     const [selectedPrimaryMetric, setSelectedPrimaryMetric] = useState('FundraisingEfficiency');
-    const [showOnlyCompleted, setShowOnlyCompleted] = useState(true);
+    const [showOnlyCompleted, setShowOnlyCompleted] = useState(false);
     const [removeOutliers, setRemoveOutliers] = useState(false);
     const [excludeGivingCircles, setExcludeGivingCircles] = useState(true);
 
