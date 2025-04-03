@@ -52,7 +52,7 @@ const RayOfHopeAnalysis = () => {
                     { "Title": "Sample Campaign 5", "Days to Go": 0, "Amount Raised": 3500, "Target Amount": 4000, "Source Category": "families-in-need, 0children-12-years-and-below", "Start Date": "12/07/2024" }
                 ];
 
-                // Try to load real data if in Claude environment or via fetch
+                // Try to load real data via fetch
                 try {
                     console.log("Trying fetch API as fallback");
                     try {
@@ -72,8 +72,8 @@ const RayOfHopeAnalysis = () => {
                 // Extract primary category for each campaign
                 jsonData.forEach(row => {
                     // Extract primary category
-                    if (row['Source Category']) {
-                        row.primaryCategory = extractPrimaryCategory(row['Source Category']);
+                    if (row['Categories']) {
+                        row.primaryCategory = extractPrimaryCategory(row['Categories']);
                     } else {
                         row.primaryCategory = "Unknown";
                     }
@@ -548,20 +548,6 @@ const RayOfHopeAnalysis = () => {
                     </div>
                 </div>
 
-                {/* Use the reusable CategoryAnalysisD3 component for Primary Categories */}
-                <CategoryAnalysisD3
-                    title="Metrics by Primary Category"
-                    description="Primary Category"
-                    categories={data.primaryCategories}
-                    categoryMetrics={data.primaryCategoryMetrics}
-                    selectedYears={selectedYears}
-                    selectedMetric={selectedPrimaryMetric}
-                    filteredComparison={filteredPrimaryYearlyComparison}
-                    formatAmount={formatAmount}
-                    formatPercent={formatPercent}
-                    onMetricChange={setSelectedPrimaryMetric}
-                />
-
                 {/* Use the same reusable component for Beneficiary Categories */}
                 <CategoryAnalysisD3
                     title="Metrics by Beneficiary Category"
@@ -574,6 +560,20 @@ const RayOfHopeAnalysis = () => {
                     formatAmount={formatAmount}
                     formatPercent={formatPercent}
                     onMetricChange={setSelectedMetric}
+                />
+
+                {/* Use the reusable CategoryAnalysisD3 component for Primary Categories */}
+                <CategoryAnalysisD3
+                    title="Metrics by Primary Category"
+                    description="Primary Category"
+                    categories={data.primaryCategories}
+                    categoryMetrics={data.primaryCategoryMetrics}
+                    selectedYears={selectedYears}
+                    selectedMetric={selectedPrimaryMetric}
+                    filteredComparison={filteredPrimaryYearlyComparison}
+                    formatAmount={formatAmount}
+                    formatPercent={formatPercent}
+                    onMetricChange={setSelectedPrimaryMetric}
                 />
             </div>
         </div>

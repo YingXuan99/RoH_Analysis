@@ -182,9 +182,10 @@ const CategoryAnalysisD3 = ({
                 // Split long labels into multiple lines
                 const labelMap = {
                     'children-12-years-and-below': ['children'],
-                    'other-marginalised-communities': ['marginalized', 'comm'],
+                    'other-marginalised-communities': ['marginalized'],
                     'youth-from-13-to-21-years': ['youth'],
-                    'families-in-need': ['families']
+                    'families-in-need': ['families'],
+                    'Other Marginalised Communities': ['Marginalized']
                 };
                 return labelMap[d] ? labelMap[d].join('\n') : d;
             })
@@ -366,8 +367,11 @@ const CategoryAnalysisD3 = ({
         // Priority categories to appear at the top
         const priorityCategories = [
             'children-12-years-and-below',
+            'youth-from-13-to-21-years',
             'mental-health',
-            'youth-from-13-to-21-years'
+            "Families In Need",
+            "Youth (from 13 to 21 years)",
+            "Mental Health"
         ];
 
         // Check if they're in the priority list
@@ -475,7 +479,13 @@ const CategoryAnalysisD3 = ({
                                         }
 
                                         // Add a visual highlight for priority categories
-                                        const isPriorityCategory = ['children-12-years-and-below', 'mental-health', 'youth-from-13-to-21-years'].includes(category);
+                                        const isPriorityCategory = [
+                                            'children-12-years-and-below',
+                                            'youth-from-13-to-21-years',
+                                            'mental-health',
+                                            "Families In Need",
+                                            "Youth (from 13 to 21 years)",
+                                            "Mental Health"].includes(category);
                                         const categoryRowClass = isPriorityCategory ? "table-primary" : "table-secondary";
 
                                         return (
