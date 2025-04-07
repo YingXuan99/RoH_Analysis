@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import RayOfHopeAnalysis from './RayOfHopeAnalysis';
 import PlatformComparison from './PlatformComparison';
-import NavigationBar from './Navbar';
+import NavigationBar from './components/Navbar';
 
 // Bootstrap CSS
 import 'bootstrap/dist/css/bootstrap.min.css';

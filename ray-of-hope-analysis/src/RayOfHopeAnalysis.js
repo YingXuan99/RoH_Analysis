@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import CategoryAnalysisD3 from './CategoryAnalysisD3';
-import MetricsTableD3 from './MetricsTableD3';
-import D3BarChart from './D3BarChart';
+import FilterControls from './components/FilterControls';
+import UnifiedD3Analysis from './components/UnifiedD3Analysis';
+import MetricsTableD3 from './components/MetricsTableD3';
+import D3BarChart from './components/D3BarChart';
+import MonthlyTrendsLineChart from './components/MonthlyTrendsLineChart';
 
 const RayOfHopeAnalysis = () => {
     const [data, setData] = useState({
@@ -39,7 +41,54 @@ const RayOfHopeAnalysis = () => {
             return categories[0] || "Unknown";
         }
     };
+    const [monthlyDistribution, setMonthlyDistribution] = useState({
+        '2023': new Array(12).fill(0),
+        '2024': new Array(12).fill(0)
+    });
 
+    // Add the function to process monthly distribution data
+    const processMonthlyDistribution = (jsonData) => {
+        const monthlyData = {
+            '2023': new Array(12).fill(0),
+            '2024': new Array(12).fill(0)
+        };
+
+        // Apply filters first
+        let filteredData = [...jsonData];
+
+        if (removeOutliers) {
+            filteredData = filteredData.filter(row => (row['Target Amount'] || 0) < 1000000);
+        }
+
+        if (excludeGivingCircles) {
+            filteredData = filteredData.filter(row => {
+                if (!row['Source Category']) return true;
+                return !row['Source Category'].toLowerCase().includes('giving-circles');
+            });
+        }
+
+        if (showOnlyCompleted) {
+            filteredData = filteredData.filter(campaign => campaign["Days to Go"] === 0);
+        }
+
+        // Count campaigns by month
+        filteredData.forEach(campaign => {
+            if (campaign['Start Date']) {
+                const dateParts = campaign['Start Date'].split('/');
+                if (dateParts.length === 3) {
+                    // For Ray of Hope format (DD/MM/YYYY)
+                    const month = parseInt(dateParts[1]) - 1; // Convert to 0-based month index
+                    const year = dateParts[2];
+
+                    if ((year === '2023' || year === '2024') && month >= 0 && month < 12) {
+                        monthlyData[year][month]++;
+                    }
+                }
+            }
+        });
+
+        return monthlyData;
+    };
     useEffect(() => {
         const processData = async () => {
             try {
@@ -336,6 +385,9 @@ const RayOfHopeAnalysis = () => {
                     primaryCategories: Array.from(allPrimaryCategories)
                 });
 
+                const monthlyData = processMonthlyDistribution(filteredJsonData);
+                setMonthlyDistribution(monthlyData);
+
             } catch (error) {
                 console.error("Error processing data:", error);
                 setData(prev => ({ ...prev, loading: false, error: error.message }));
@@ -409,6 +461,18 @@ const RayOfHopeAnalysis = () => {
             </span>
         );
     };
+    const formatMonthlyDataForLineChart = () => {
+        const months = [
+            'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        ];
+    
+        return months.map((month, index) => ({
+            month: month, // Use 'month' property instead of 'Year'
+            '2023': monthlyDistribution['2023'][index],
+            '2024': monthlyDistribution['2024'][index]
+        }));
+    };
 
     if (data.loading) {
         return <div className="flex justify-center items-center h-64">Loading data...</div>;
@@ -426,54 +490,14 @@ const RayOfHopeAnalysis = () => {
     return (
         <div className="container py-4">
             <h1 className="h2 text-center mb-4">Ray of Hope Crowdfunding Campaign Analysis</h1>
-            {/* Dashboard Information */}
-            <div className="row mt-4">
-                <div className="col-12">
-                    {/* Filters explanation */}
-                    <div className="card mb-3">
-                        <div className="card-body">
-                            <h3 className="h5 mb-3">Dashboard Filters</h3>
-                            <ul className="list-group list-group-flush">
-                                <li className="list-group-item"><strong>Completed Campaigns Toggle</strong>: Show only campaigns that have reached their end date (Days to Go = 0).</li>
-                                <li className="list-group-item"><strong>Remove Outliers Toggle</strong>: Exclude campaigns with target amounts of $1 million or more from the analysis.</li>
-                                <li className="list-group-item"><strong>Exclude Giving Circles Toggle</strong>: Remove giving circles from the analysis as they remain perpetually open and can receive donations regardless of start date.</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="d-flex flex-wrap justify-content-center gap-4 mb-4">
-                <button
-                    className={`btn ${showOnlyCompleted ? 'btn-primary' : 'btn-outline-secondary'} d-flex align-items-center`}
-                    onClick={() => setShowOnlyCompleted(!showOnlyCompleted)}
-                >
-                    <span className="me-2">
-                        {showOnlyCompleted ? '✓' : ''}
-                    </span>
-                    {showOnlyCompleted ? "Showing only completed campaigns" : "Showing all campaigns"}
-                </button>
-
-                <button
-                    className={`btn ${removeOutliers ? 'btn-primary' : 'btn-outline-secondary'} d-flex align-items-center`}
-                    onClick={() => setRemoveOutliers(!removeOutliers)}
-                >
-                    <span className="me-2">
-                        {removeOutliers ? '✓' : ''}
-                    </span>
-                    {removeOutliers ? "Excluding campaigns ≥ $1M" : "Including all campaign targets"}
-                </button>
-
-                <button
-                    className={`btn ${excludeGivingCircles ? 'btn-primary' : 'btn-outline-secondary'} d-flex align-items-center`}
-                    onClick={() => setExcludeGivingCircles(!excludeGivingCircles)}
-                >
-                    <span className="me-2">
-                        {excludeGivingCircles ? '✓' : ''}
-                    </span>
-                    {excludeGivingCircles ? "Excluding giving circles" : "Including giving circles"}
-                </button>
-            </div>
+            <FilterControls
+                showOnlyCompleted={showOnlyCompleted}
+                setShowOnlyCompleted={setShowOnlyCompleted}
+                removeOutliers={removeOutliers}
+                setRemoveOutliers={setRemoveOutliers}
+                excludeGivingCircles={excludeGivingCircles}
+                setExcludeGivingCircles={setExcludeGivingCircles}
+            />
 
             {/* Improved Metrics and Categories Explanation */}
             <div className="row mt-4">
@@ -512,29 +536,6 @@ const RayOfHopeAnalysis = () => {
                 <div className="h4 mb-4">Overall Campaign Metrics: 2023 vs 2024
                     {getFilterSummary()}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <D3BarChart
-                        data={filteredOverallMetrics}
-                        keys={['Campaigns', 'CampaignsMetTarget']}
-                        colors={['#8884d8', '#FF8042']}
-                        title="Campaign Counts"
-                        yAxisLabel="Number of Campaigns"
-                        barLabels={['Total Campaigns', 'Campaigns Met Target']}
-                        valueFormat={(value) => value}
-                    />
-
-                    <D3BarChart
-                        data={filteredOverallMetrics}
-                        keys={['FundraisingEfficiency', 'TargetSuccessRate']}
-                        colors={['#82ca9d', '#FFBB28']}
-                        title="Success Metrics (%)"
-                        yAxisLabel="Percentage (%)"
-                        barLabels={['Target Completion %', 'Target Success Rate']}
-                        yFormat={(value) => value + '%'}
-                        valueFormat={(value) => value + '%'}
-                    />
-                </div>
-
                 <div className="d-flex justify-content-center mb-4 mt-4">
                     <div className="card w-100">
                         <div className="card-body">
@@ -547,33 +548,79 @@ const RayOfHopeAnalysis = () => {
                         </div>
                     </div>
                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* <D3BarChart
+                        data={filteredOverallMetrics}
+                        keys={['Campaigns', 'CampaignsMetTarget']}
+                        colors={['#8884d8', '#FF8042']}
+                        title="Campaign Counts"
+                        yAxisLabel="Number of Campaigns"
+                        barLabels={['Total Campaigns', 'Campaigns Met Target']}
+                        valueFormat={(value) => value}
+                    /> */}
+                    <D3BarChart
+                        data={filteredOverallMetrics}
+                        keys={['FundraisingEfficiency', 'TargetSuccessRate']}
+                        colors={['#82ca9d', '#FFBB28']}
+                        title="Success Metrics (%)"
+                        yAxisLabel="Percentage (%)"
+                        barLabels={['Target Completion %', 'Target Success Rate']}
+                        yFormat={(value) => value + '%'}
+                        valueFormat={(value) => value + '%'}
+                    />
+                    <MonthlyTrendsLineChart
+                        data={formatMonthlyDataForLineChart()}
+                        title="Monthly Campaign Distribution"
+                        xAxisLabel="Month"
+                        yAxisLabel="Number of Campaigns"
+                        colors={['#8884d8', '#82ca9d']}
+                        yearKeys={['2023', '2024']}
+                        valueFormat={(value) => value}
+                    />
+                </div>
 
-                {/* Use the same reusable component for Beneficiary Categories */}
-                <CategoryAnalysisD3
+
+
+                <UnifiedD3Analysis
                     title="Metrics by Beneficiary Category"
                     description="Beneficiary Category"
-                    categories={data.sourceCategories}
-                    categoryMetrics={data.categoryMetrics}
+                    dataItems={data.sourceCategories}
+                    itemKey="Category"
+                    metricsData={data.categoryMetrics}
+                    comparisonData={filteredYearlyComparison}
                     selectedYears={selectedYears}
                     selectedMetric={selectedMetric}
-                    filteredComparison={filteredYearlyComparison}
+                    onMetricChange={setSelectedMetric}
                     formatAmount={formatAmount}
                     formatPercent={formatPercent}
-                    onMetricChange={setSelectedMetric}
+                    priorityItems={[
+                        'children-12-years-and-below',
+                        'youth-from-13-to-21-years',
+                        'mental-health',
+                        'families-in-need'
+                    ]}
+                    maxBarItems={10}
                 />
 
-                {/* Use the reusable CategoryAnalysisD3 component for Primary Categories */}
-                <CategoryAnalysisD3
+                <UnifiedD3Analysis
                     title="Metrics by Primary Category"
                     description="Primary Category"
-                    categories={data.primaryCategories}
-                    categoryMetrics={data.primaryCategoryMetrics}
+                    dataItems={data.primaryCategories}
+                    itemKey="Category"
+                    metricsData={data.primaryCategoryMetrics}
+                    comparisonData={filteredPrimaryYearlyComparison}
                     selectedYears={selectedYears}
                     selectedMetric={selectedPrimaryMetric}
-                    filteredComparison={filteredPrimaryYearlyComparison}
+                    onMetricChange={setSelectedPrimaryMetric}
                     formatAmount={formatAmount}
                     formatPercent={formatPercent}
-                    onMetricChange={setSelectedPrimaryMetric}
+                    priorityItems={[
+                        'Children (12 years and below)',
+                        'Youth (from 13 to 21 years)',
+                        'Mental Health',
+                        'Families In Need'
+                    ]}
+                    maxBarItems={10}
                 />
             </div>
         </div>
