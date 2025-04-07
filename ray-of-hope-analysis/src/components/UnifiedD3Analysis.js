@@ -894,9 +894,6 @@ const UnifiedD3Analysis = ({
                             onChange={() => typeof window !== 'undefined' && window.location.reload()} 
                             disabled={true}
                         />
-                        <label className="form-check-label" htmlFor="groupByYearToggle">
-                            Group by year first {groupByYear ? "(Showing years → items)" : "(Showing items → years)"}
-                        </label>
                     </div>
                 </div>
 

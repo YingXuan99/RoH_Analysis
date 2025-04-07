@@ -570,7 +570,7 @@ const RayOfHopeAnalysis = () => {
                     />
                     <MonthlyTrendsLineChart
                         data={formatMonthlyDataForLineChart()}
-                        title="Monthly Campaign Distribution"
+                        title="Campaigns Started per Month"
                         xAxisLabel="Month"
                         yAxisLabel="Number of Campaigns"
                         colors={['#8884d8', '#82ca9d']}
@@ -583,7 +583,7 @@ const RayOfHopeAnalysis = () => {
 
                 <UnifiedD3Analysis
                     title="Metrics by Beneficiary Category"
-                    description="Beneficiary Category"
+                    description="Year"
                     dataItems={data.sourceCategories}
                     itemKey="Category"
                     metricsData={data.categoryMetrics}
@@ -596,15 +596,14 @@ const RayOfHopeAnalysis = () => {
                     priorityItems={[
                         'children-12-years-and-below',
                         'youth-from-13-to-21-years',
-                        'mental-health',
-                        'families-in-need'
+                        'mental-health'
                     ]}
                     maxBarItems={10}
                 />
 
                 <UnifiedD3Analysis
                     title="Metrics by Primary Category"
-                    description="Primary Category"
+                    description="Year"
                     dataItems={data.primaryCategories}
                     itemKey="Category"
                     metricsData={data.primaryCategoryMetrics}
