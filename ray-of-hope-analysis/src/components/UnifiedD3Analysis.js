@@ -883,19 +883,6 @@ const UnifiedD3Analysis = ({
                         )}
                     </select>
                 </div>
-                
-                <div className="mb-3">
-                    <div className="form-check">
-                        <input 
-                            className="form-check-input" 
-                            type="checkbox" 
-                            id="groupByYearToggle" 
-                            checked={groupByYear} 
-                            onChange={() => typeof window !== 'undefined' && window.location.reload()} 
-                            disabled={true}
-                        />
-                    </div>
-                </div>
 
                 {/* D3 Chart Container */}
                 <div ref={chartRef} style={{ width: '100%', height: `${chartHeight}px` }}></div>
