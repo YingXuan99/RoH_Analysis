@@ -416,7 +416,7 @@ const UnifiedD3Analysis = ({
             .selectAll("g")
             .data(legendItems)
             .join("g")
-            .attr("transform", (d, i) => `translate(${width - 150},${i * 20})`);
+            .attr("transform", (d, i) => `translate(${width - 150},${-50+i * 20})`);
 
         legend.append("rect")
             .attr("x", 0)
