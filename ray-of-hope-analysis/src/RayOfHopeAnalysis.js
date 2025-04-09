@@ -24,6 +24,18 @@ const RayOfHopeAnalysis = () => {
     const [showOnlyCompleted, setShowOnlyCompleted] = useState(false);
     const [removeOutliers, setRemoveOutliers] = useState(false);
     const [excludeGivingCircles, setExcludeGivingCircles] = useState(true);
+    const metricOptions = [
+        { key: 'TargetSuccessRate', label: 'Target Success Rate (%)' },
+        { key: 'FundraisingEfficiency', label: 'Target Completion (%)' },
+        { key: 'Campaigns', label: 'Number of Campaigns' },
+        { key: 'CampaignsMetTarget', label: 'Campaigns with Target Met' },
+        { key: 'Donors', label: 'Total Donors' },
+        { key: 'AmountRaised', label: 'Amount Raised' },
+        { key: 'TargetAmount', label: 'Target Amount' },
+        { key: 'AvgDonorsPerCampaign', label: 'Avg Donors per Campaign' },
+        { key: 'AvgAmountPerDonor', label: 'Avg Amount per Donor' },
+        { key: 'AvgAmountPerCampaign', label: 'Avg Amount per Campaign' }
+    ];
 
     // Function to extract primary category (the one starting with "0")
     const extractPrimaryCategory = (sourceCategory) => {
@@ -178,7 +190,12 @@ const RayOfHopeAnalysis = () => {
                         (campaign['Amount Raised'] || 0) >= (campaign['Target Amount'] || 0)
                     ).length;
                     const targetSuccessRate = campaigns.length > 0 ? parseFloat(((campaignsMetTarget / campaigns.length) * 100).toFixed(0)) : 0;
-
+                
+                    // Calculate average metrics
+                    const avgDonorsPerCampaign = campaigns.length > 0 ? totalDonors / campaigns.length : 0;
+                    const avgAmountPerDonor = totalDonors > 0 ? totalRaised / totalDonors : 0;
+                    const avgAmountPerCampaign = campaigns.length > 0 ? totalRaised / campaigns.length : 0;
+                
                     yearlyMetrics[year] = {
                         campaigns: campaigns.length,
                         amountRaised: totalRaised,
@@ -186,7 +203,11 @@ const RayOfHopeAnalysis = () => {
                         fundraisingEfficiency: fundraisingEfficiency,
                         campaignsMetTarget: campaignsMetTarget,
                         targetSuccessRate: targetSuccessRate,
-                        donors: totalDonors
+                        donors: totalDonors,
+                        // Add these new properties 
+                        avgDonorsPerCampaign: avgDonorsPerCampaign,
+                        avgAmountPerDonor: avgAmountPerDonor,
+                        avgAmountPerCampaign: avgAmountPerCampaign
                     };
                 });
 
@@ -211,25 +232,30 @@ const RayOfHopeAnalysis = () => {
                 const categoryMetricsByYear = {};
                 Array.from(allSourceCategories).forEach(category => {
                     categoryMetricsByYear[category] = {};
-
+                
                     Object.keys(campaignsByYear).forEach(year => {
                         // Filter campaigns for this category and year
                         const categoryCampaigns = campaignsByYear[year].filter(campaign =>
                             campaign['Source Category'] &&
                             campaign['Source Category'].split(',').map(cat => cat.trim()).includes(category)
                         );
-
+                
                         const totalRaised = categoryCampaigns.reduce((sum, campaign) => sum + (campaign['Amount Raised'] || 0), 0);
                         const totalTarget = categoryCampaigns.reduce((sum, campaign) => sum + (campaign['Target Amount'] || 0), 0);
                         const totalDonors = categoryCampaigns.reduce((sum, campaign) => sum + (campaign['Number of Donors'] || 0), 0);
                         const fundraisingEfficiency = totalTarget > 0 ? (totalRaised / totalTarget) * 100 : 0;
-
-                        // 2. Target Success Rate
+                
+                        // Target Success Rate
                         const campaignsMetTarget = categoryCampaigns.filter(campaign =>
                             (campaign['Amount Raised'] || 0) >= (campaign['Target Amount'] || 0)
                         ).length;
                         const targetSuccessRate = categoryCampaigns.length > 0 ? (campaignsMetTarget / categoryCampaigns.length) * 100 : 0;
-
+                        
+                        // Calculate average metrics
+                        const avgDonorsPerCampaign = categoryCampaigns.length > 0 ? totalDonors / categoryCampaigns.length : 0;
+                        const avgAmountPerDonor = totalDonors > 0 ? totalRaised / totalDonors : 0;
+                        const avgAmountPerCampaign = categoryCampaigns.length > 0 ? totalRaised / categoryCampaigns.length : 0;
+                
                         categoryMetricsByYear[category][year] = {
                             campaigns: categoryCampaigns.length,
                             amountRaised: totalRaised,
@@ -237,7 +263,11 @@ const RayOfHopeAnalysis = () => {
                             fundraisingEfficiency: fundraisingEfficiency,
                             campaignsMetTarget: campaignsMetTarget,
                             targetSuccessRate: targetSuccessRate,
-                            donors: totalDonors
+                            donors: totalDonors,
+                            // Add these new properties
+                            avgDonorsPerCampaign: avgDonorsPerCampaign,
+                            avgAmountPerDonor: avgAmountPerDonor,
+                            avgAmountPerCampaign: avgAmountPerCampaign
                         };
                     });
                 });
@@ -246,24 +276,29 @@ const RayOfHopeAnalysis = () => {
                 const primaryCategoryMetricsByYear = {};
                 Array.from(allPrimaryCategories).forEach(category => {
                     primaryCategoryMetricsByYear[category] = {};
-
+                
                     Object.keys(campaignsByYear).forEach(year => {
                         // Filter campaigns for this primary category and year
                         const categoryCampaigns = campaignsByYear[year].filter(campaign =>
                             campaign.primaryCategory === category
                         );
-
+                
                         const totalRaised = categoryCampaigns.reduce((sum, campaign) => sum + (campaign['Amount Raised'] || 0), 0);
                         const totalTarget = categoryCampaigns.reduce((sum, campaign) => sum + (campaign['Target Amount'] || 0), 0);
                         const totalDonors = categoryCampaigns.reduce((sum, campaign) => sum + (campaign['Number of Donors'] || 0), 0)
                         // Calculate metrics for primary categories
                         const fundraisingEfficiency = totalTarget > 0 ? (totalRaised / totalTarget) * 100 : 0;
-
+                
                         const campaignsMetTarget = categoryCampaigns.filter(campaign =>
                             (campaign['Amount Raised'] || 0) >= (campaign['Target Amount'] || 0)
                         ).length;
                         const targetSuccessRate = categoryCampaigns.length > 0 ? (campaignsMetTarget / categoryCampaigns.length) * 100 : 0;
-
+                
+                        // Calculate average metrics
+                        const avgDonorsPerCampaign = categoryCampaigns.length > 0 ? totalDonors / categoryCampaigns.length : 0;
+                        const avgAmountPerDonor = totalDonors > 0 ? totalRaised / totalDonors : 0;
+                        const avgAmountPerCampaign = categoryCampaigns.length > 0 ? totalRaised / categoryCampaigns.length : 0;
+                
                         primaryCategoryMetricsByYear[category][year] = {
                             campaigns: categoryCampaigns.length,
                             amountRaised: totalRaised,
@@ -271,12 +306,15 @@ const RayOfHopeAnalysis = () => {
                             fundraisingEfficiency: fundraisingEfficiency,
                             campaignsMetTarget: campaignsMetTarget,
                             targetSuccessRate: targetSuccessRate,
-                            donors: totalDonors
+                            donors: totalDonors,
+                            // Add these new properties
+                            avgDonorsPerCampaign: avgDonorsPerCampaign,
+                            avgAmountPerDonor: avgAmountPerDonor,
+                            avgAmountPerCampaign: avgAmountPerCampaign
                         };
                     });
                 });
 
-                // Format data for charts
                 const overallMetricsData = Object.keys(yearlyMetrics).map(year => ({
                     Year: year,
                     Campaigns: yearlyMetrics[year].campaigns,
@@ -285,7 +323,11 @@ const RayOfHopeAnalysis = () => {
                     FundraisingEfficiency: yearlyMetrics[year].fundraisingEfficiency,
                     CampaignsMetTarget: yearlyMetrics[year].campaignsMetTarget,
                     TargetSuccessRate: yearlyMetrics[year].targetSuccessRate,
-                    Donors: yearlyMetrics[year].donors
+                    Donors: yearlyMetrics[year].donors,
+                    // Add these new properties
+                    AvgDonorsPerCampaign: yearlyMetrics[year].avgDonorsPerCampaign,
+                    AvgAmountPerDonor: yearlyMetrics[year].avgAmountPerDonor,
+                    AvgAmountPerCampaign: yearlyMetrics[year].avgAmountPerCampaign
                 }));
 
                 const categoryMetricsData = [];
@@ -300,7 +342,11 @@ const RayOfHopeAnalysis = () => {
                             FundraisingEfficiency: categoryMetricsByYear[category][year].fundraisingEfficiency,
                             CampaignsMetTarget: categoryMetricsByYear[category][year].campaignsMetTarget,
                             TargetSuccessRate: categoryMetricsByYear[category][year].targetSuccessRate,
-                            Donors: categoryMetricsByYear[category][year].donors
+                            Donors: categoryMetricsByYear[category][year].donors,
+                            // Add these new properties
+                            AvgDonorsPerCampaign: categoryMetricsByYear[category][year].avgDonorsPerCampaign,
+                            AvgAmountPerDonor: categoryMetricsByYear[category][year].avgAmountPerDonor,
+                            AvgAmountPerCampaign: categoryMetricsByYear[category][year].avgAmountPerCampaign
                         });
                     });
                 });
@@ -318,7 +364,11 @@ const RayOfHopeAnalysis = () => {
                             FundraisingEfficiency: primaryCategoryMetricsByYear[category][year].fundraisingEfficiency,
                             CampaignsMetTarget: primaryCategoryMetricsByYear[category][year].campaignsMetTarget,
                             TargetSuccessRate: primaryCategoryMetricsByYear[category][year].targetSuccessRate,
-                            Donors: primaryCategoryMetricsByYear[category][year].donors
+                            Donors: primaryCategoryMetricsByYear[category][year].donors,
+                            // Add these new properties
+                            AvgDonorsPerCampaign: primaryCategoryMetricsByYear[category][year].avgDonorsPerCampaign,
+                            AvgAmountPerDonor: primaryCategoryMetricsByYear[category][year].avgAmountPerDonor,
+                            AvgAmountPerCampaign: primaryCategoryMetricsByYear[category][year].avgAmountPerCampaign
                         });
                     });
                 });
@@ -335,6 +385,10 @@ const RayOfHopeAnalysis = () => {
                             result[`CampaignsMetTarget_${year}`] = categoryMetricsByYear[category][year].campaignsMetTarget;
                             result[`TargetSuccessRate_${year}`] = categoryMetricsByYear[category][year].targetSuccessRate;
                             result[`Donors_${year}`] = categoryMetricsByYear[category][year].donors;
+                            // Add these new properties
+                            result[`AvgDonorsPerCampaign_${year}`] = categoryMetricsByYear[category][year].avgDonorsPerCampaign;
+                            result[`AvgAmountPerDonor_${year}`] = categoryMetricsByYear[category][year].avgAmountPerDonor;
+                            result[`AvgAmountPerCampaign_${year}`] = categoryMetricsByYear[category][year].avgAmountPerCampaign;
                         } else {
                             result[`Campaigns_${year}`] = 0;
                             result[`AmountRaised_${year}`] = 0;
@@ -343,11 +397,15 @@ const RayOfHopeAnalysis = () => {
                             result[`CampaignsMetTarget_${year}`] = 0;
                             result[`TargetSuccessRate_${year}`] = 0;
                             result[`Donors_${year}`] = 0;
+                            // Add these new properties with default values
+                            result[`AvgDonorsPerCampaign_${year}`] = 0;
+                            result[`AvgAmountPerDonor_${year}`] = 0;
+                            result[`AvgAmountPerCampaign_${year}`] = 0;
                         }
                     });
                     return result;
                 });
-
+                
                 // Primary category yearly comparison data
                 const primaryYearlyComparisonData = Array.from(allPrimaryCategories).map(category => {
                     const result = { Category: category };
@@ -360,6 +418,10 @@ const RayOfHopeAnalysis = () => {
                             result[`CampaignsMetTarget_${year}`] = primaryCategoryMetricsByYear[category][year].campaignsMetTarget;
                             result[`TargetSuccessRate_${year}`] = primaryCategoryMetricsByYear[category][year].targetSuccessRate;
                             result[`Donors_${year}`] = primaryCategoryMetricsByYear[category][year].donors;
+                            // Add these new properties
+                            result[`AvgDonorsPerCampaign_${year}`] = primaryCategoryMetricsByYear[category][year].avgDonorsPerCampaign;
+                            result[`AvgAmountPerDonor_${year}`] = primaryCategoryMetricsByYear[category][year].avgAmountPerDonor;
+                            result[`AvgAmountPerCampaign_${year}`] = primaryCategoryMetricsByYear[category][year].avgAmountPerCampaign;
                         } else {
                             result[`Campaigns_${year}`] = 0;
                             result[`AmountRaised_${year}`] = 0;
@@ -368,6 +430,10 @@ const RayOfHopeAnalysis = () => {
                             result[`CampaignsMetTarget_${year}`] = 0;
                             result[`TargetSuccessRate_${year}`] = 0;
                             result[`Donors_${year}`] = 0;
+                            // Add these new properties with default values
+                            result[`AvgDonorsPerCampaign_${year}`] = 0;
+                            result[`AvgAmountPerDonor_${year}`] = 0;
+                            result[`AvgAmountPerCampaign_${year}`] = 0;
                         }
                     });
                     return result;
@@ -599,6 +665,7 @@ const RayOfHopeAnalysis = () => {
                         'mental-health'
                     ]}
                     maxBarItems={10}
+                    metricOptions={metricOptions}
                 />
 
                 <UnifiedD3Analysis
@@ -620,6 +687,7 @@ const RayOfHopeAnalysis = () => {
                         'Families In Need'
                     ]}
                     maxBarItems={10}
+                    metricOptions={metricOptions}
                 />
             </div>
         </div>
