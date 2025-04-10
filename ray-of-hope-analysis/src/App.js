@@ -15,7 +15,7 @@ function App() {
         <NavigationBar />
         <main className="container py-4">
           <Routes>
-            <Route path="/Roh_Analysis" element={<RayOfHopeAnalysis />} />
+            <Route path="/RoH_Analysis" element={<RayOfHopeAnalysis />} />
             <Route path="/comparison" element={<PlatformComparison />} />
           </Routes>
         </main>

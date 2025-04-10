@@ -19,7 +19,7 @@ const NavigationBar = () => {
                 <div className="d-flex align-items-center gap-4">
                     <Navbar.Brand
                         as={Link}
-                        to="/Roh_Analysis"
+                        to="/RoH_Analysis"
                         className="d-flex align-items-center m-0"
                         style={{
                             fontWeight: 600,
